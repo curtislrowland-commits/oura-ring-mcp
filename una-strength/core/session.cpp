@@ -1,0 +1,26 @@
+#include "session.hpp"
+#include <algorithm>
+#include <stdexcept>
+
+namespace una_strength {
+Session::Session(const WorkoutPlan&p,std::uint64_t start_ms):plan_(p){ result_.workout_id=p.workout_id;result_.workout_name=p.name;result_.date=p.scheduled_date;result_.started_at_unix_ms=start_ms; for(size_t i=0;i<p.exercises.size();++i){CompletedExercise e;e.id=p.exercises[i].id;e.prescribed_name=p.exercises[i].name;e.actual_name=p.exercises[i].name;e.prescribed_order=static_cast<int>(i+1);e.actual_order=static_cast<int>(i+1);result_.exercises.push_back(e);} if(p.exercises.empty())finished_=true;else load_current(); }
+void Session::load_current(){ if(finished_)return; const auto&sp=plan_.exercises.at(ex_).sets.at(set_);edit_reps_=sp.target_reps;edit_weight_=sp.target_weight_lb; }
+void Session::edit_reps(int r){if(r<0||r>1000)throw std::runtime_error("invalid reps");edit_reps_=r;}
+void Session::edit_weight(double w){if(w<0||w>5000)throw std::runtime_error("invalid weight");edit_weight_=w;}
+std::uint64_t Session::elapsed_rest_ms(std::uint64_t now)const{return last_set_end_ms_?now-last_set_end_ms_:0;}
+void Session::end_rest(std::uint64_t now){
+    if(!last_set_end_ms_) return;
+    for(auto ex_it=result_.exercises.rbegin(); ex_it!=result_.exercises.rend(); ++ex_it){
+        if(!ex_it->sets.empty()){
+            ex_it->sets.back().rest_duration_ms=elapsed_rest_ms(now);
+            return;
+        }
+    }
+}
+void Session::complete_set(std::uint64_t now,std::uint64_t dur,int auto_count){if(finished_)throw std::runtime_error("session finished");const auto&sp=plan_.exercises[ex_].sets[set_];CompletedSet s;s.set_number=static_cast<int>(set_+1);s.prescribed_reps=sp.target_reps;s.prescribed_weight_lb=sp.target_weight_lb;s.actual_reps=edit_reps_;s.actual_weight_lb=edit_weight_;s.set_duration_ms=dur;s.rest_duration_ms=0;if(auto_count>=0){s.auto_rep_count_used=true;s.auto_rep_count=auto_count;s.rep_count_corrected=(auto_count!=edit_reps_);}result_.exercises[ex_].sets.push_back(s);result_.total_reps+=s.actual_reps;result_.training_volume_lb+=s.actual_reps*s.actual_weight_lb;last_set_end_ms_=now;advance();}
+void Session::skip_current_set(std::uint64_t now){if(finished_)return;const auto&sp=plan_.exercises[ex_].sets[set_];CompletedSet s;s.set_number=static_cast<int>(set_+1);s.prescribed_reps=sp.target_reps;s.prescribed_weight_lb=sp.target_weight_lb;s.skipped=true;s.rest_duration_ms=0;result_.exercises[ex_].sets.push_back(s);last_set_end_ms_=now;advance();}
+void Session::substitute_current_exercise(const std::string&id,const std::string&name){auto&e=result_.exercises.at(ex_);e.id=id;e.actual_name=name;e.substituted=true;}
+void Session::skip_current_exercise(std::uint64_t now){auto&e=result_.exercises.at(ex_);e.skipped=true;while(!finished_&&ex_<plan_.exercises.size()&&result_.exercises[ex_].sets.size()<plan_.exercises[ex_].sets.size())skip_current_set(now);}
+void Session::advance(){++set_;if(set_>=plan_.exercises[ex_].sets.size()){set_=0;++ex_;if(ex_>=plan_.exercises.size()){finished_=true;return;}}load_current();}
+WorkoutResult Session::finish(std::uint64_t end,const SubjectiveAssessment&a){if(!finished_)throw std::runtime_error("cannot finish before all planned sets are completed or skipped");result_.ended_at_unix_ms=end;result_.duration_ms=end-result_.started_at_unix_ms;result_.assessment=a;return result_;}
+}

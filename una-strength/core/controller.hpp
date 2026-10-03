@@ -6,7 +6,7 @@
 
 namespace una_strength {
 enum class Button { Up, Down, Select, Back };
-enum class Screen { Workout, EditWeight, EditReps, ConfirmSet, Rest, AssessmentQuality, AssessmentStrength, AssessmentEnergy, AssessmentRpe, AssessmentPain, AssessmentExpectation, Summary };
+enum class Screen { Workout, EditWeight, EditReps, ConfirmSet, Rest, Actions, ChooseSubstitute, ChooseAddExercise, AssessmentQuality, AssessmentStrength, AssessmentEnergy, AssessmentRpe, AssessmentPain, AssessmentExpectation, Summary };
 struct ViewModel { Screen screen{Screen::Workout}; std::string title; std::vector<std::string> lines; std::string footer; };
 class WorkoutController {
 public:
@@ -24,6 +24,9 @@ private:
     WorkoutResult result_{};
     SubjectiveAssessment assessment_{};
     int expectation_index_{1};
+    int action_index_{0};
+    std::size_t exercise_choice_{0};
+    static const std::vector<ExercisePlan>& exercise_library();
     static std::string weight_string(double value);
     static std::string duration_string(std::uint64_t ms);
     void finish_assessment(std::uint64_t now_ms);

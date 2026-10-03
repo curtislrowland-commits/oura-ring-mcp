@@ -294,6 +294,8 @@ jobs:
               sed -i "s/set(APP_NAME \"HelloWorldLVGL\")/set(APP_NAME \"UNAStrength\")/" "$APPS/UNAStrength-CMake/CMakeLists.txt"
               sed -i "s/set(APP_ID \"94D02A02E9B3EC2E\")/set(APP_ID \"554E415354524E47\")/" "$APPS/UNAStrength-CMake/CMakeLists.txt"
               sed -i "s#OutputLVGL#OutputRC1#" "$APPS/UNAStrength-CMake/CMakeLists.txt"
+              sed -i "/set(GUI_SOURCES/a\\    \${UNA_SDK_SOURCES_JSON}" "$APPS/UNAStrength-CMake/CMakeLists.txt"
+              sed -i "/set(GUI_INCLUDE_DIRS/a\\    \${UNA_SDK_INCLUDE_DIRS_JSON}" "$APPS/UNAStrength-CMake/CMakeLists.txt"
               sed -i "/una_app_build_gui/i set(GUI_RAM_LENGTH \"900K\")" "$APPS/UNAStrength-CMake/CMakeLists.txt"
               cd "$APPS/UNAStrength-CMake"
               mkdir -p build

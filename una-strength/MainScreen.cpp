@@ -88,14 +88,12 @@ void MainScreen::startScheduled()
 
     if (!mWorkoutLoaded) {
         LOG_ERROR("UNA_STRENGTH_JSON_IMPORT_FAIL error=%s\n", error.c_str());
-        mPlan.workout_id = "IMPORT_FAILED";
-        mPlan.name = "Workout load failed";
-        mPlan.scheduled_date = "1970-01-01";
-        ExercisePlan ex;
-        ex.id = "error";
-        ex.name = "Import error";
-        ex.sets.push_back({1, 0.0});
-        mPlan.exercises.push_back(ex);
+        mController.reset();
+        mMode = LaunchMode::ScheduledError;
+        lv_label_set_text(mTitle, "Scheduled Workout");
+        lv_label_set_text(mBody, error.c_str());
+        lv_label_set_text(mFooter, "R2 back");
+        return;
     } else {
         LOG_INFO("UNA_STRENGTH_DATE_SELECT_PASS date=%s path=%s id=%s\n",
                  today.c_str(), selectedPath.c_str(), mPlan.workout_id.c_str());
@@ -151,6 +149,14 @@ void MainScreen::renderHistory()
     }
 
     const auto& e = mHistory.at(mHistoryIndex);
+    if (mMode == LaunchMode::ScheduledError) {
+        if (b == Button::Back) {
+            mMode = LaunchMode::Menu;
+            renderLaunchMenu();
+        }
+        return;
+    }
+
     if (mMode == LaunchMode::HistoryList) {
         std::string body = e.date + "\n" + e.workout_name;
         lv_label_set_text(mTitle, "Workout History");
@@ -256,6 +262,7 @@ void MainScreen::render()
     ViewModel v;
     if (mMode == LaunchMode::Scheduled) v = mController->view(nowMs());
     else if (mMode == LaunchMode::Free) v = mFreeController->view(nowMs());
+    else if (mMode == LaunchMode::ScheduledError) return;
     else if (mMode == LaunchMode::HistoryList || mMode == LaunchMode::HistoryDetail) { renderHistory(); return; }
     else { renderLaunchMenu(); return; }
 

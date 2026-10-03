@@ -1,5 +1,5 @@
 #pragma once
-#include "model.hpp"
+#include "una_strength/model.hpp"
 #include "SDK/Interfaces/IFileSystem.hpp"
 #include <string>
 

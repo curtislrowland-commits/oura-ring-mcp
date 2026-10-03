@@ -31,6 +31,26 @@ static void tap(SDL_Keycode key)
     std::this_thread::sleep_for(std::chrono::milliseconds(350));
 }
 
+static void errorFlow()
+{
+    tap(SDLK_3); // launch Scheduled; error screen must remain safe
+}
+
+static void mutationMenuFlow()
+{
+    tap(SDLK_3); // Scheduled
+    tap(SDLK_4); // options
+    tap(SDLK_2); tap(SDLK_2); tap(SDLK_3); // Add set
+    tap(SDLK_4); // options
+    for(int i=0;i<4;++i) tap(SDLK_2);
+    tap(SDLK_3); // Substitute chooser
+    tap(SDLK_2); tap(SDLK_3); // choose Bench Press
+    tap(SDLK_4); // options
+    for(int i=0;i<5;++i) tap(SDLK_2);
+    tap(SDLK_3); // Add exercise chooser
+    tap(SDLK_3); // add Pendulum Squat
+}
+
 static void scheduledFlow()
 {
     tap(SDLK_3); // launch Scheduled
@@ -129,6 +149,8 @@ int main(int,char**)
         std::this_thread::sleep_for(std::chrono::milliseconds(600));
         if(mode && std::strcmp(mode,"free")==0) freeFlow();
         else if(mode && std::strcmp(mode,"history")==0) historyFlow();
+        else if(mode && std::strcmp(mode,"error")==0) errorFlow();
+        else if(mode && std::strcmp(mode,"mutation")==0) mutationMenuFlow();
         else scheduledFlow();
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
         SDL_Event q{}; q.type=SDL_QUIT; SDL_PushEvent(&q);

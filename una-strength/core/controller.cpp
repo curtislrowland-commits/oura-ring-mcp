@@ -70,7 +70,7 @@ case Screen::AssessmentPain: if(b==Button::Up)assessment_.pain=std::min(10,asses
 case Screen::AssessmentExpectation: if(b==Button::Up)expectation_index_=std::max(0,expectation_index_-1); else if(b==Button::Down)expectation_index_=std::min(2,expectation_index_+1); else if(b==Button::Select)finish_assessment(now_ms); else if(b==Button::Back)screen_=Screen::AssessmentPain; break;
 case Screen::Summary: break; } }
 void WorkoutController::finish_assessment(std::uint64_t now_ms){ static const char* k[]={"below_expected","as_expected","above_expected"}; assessment_.expectation=k[expectation_index_]; result_=session_.finish(now_ms,assessment_); result_ready_=true; screen_=Screen::Summary; }
-ViewModel WorkoutController::view(std::uint64_t now_ms)const{ ViewModel v;v.screen=screen_; const auto&p=session_.plan(); const std::string ex=!session_.finished()?p.exercises.at(session_.exercise_index()).name:"Workout complete"; switch(screen_){
+ViewModel WorkoutController::view(std::uint64_t now_ms)const{ ViewModel v;v.screen=screen_; const auto&p=session_.plan(); const std::string ex=!session_.finished()?session_.current_exercise_name():"Workout complete"; switch(screen_){
 case Screen::Workout:v.title=ex;v.lines={"Set "+std::to_string(session_.set_index()+1)+"/"+std::to_string(p.exercises.at(session_.exercise_index()).sets.size()),"Weight: "+weight_string(session_.current_weight())+" lb","Reps: "+std::to_string(session_.current_reps())};v.footer="L1 wt L2 reps R1 done R2 menu";break;
 case Screen::EditWeight:v.title="Edit weight";v.lines={weight_string(session_.current_weight())+" lb"};v.footer="L1 +5  L2 -5  R1 save";break;
 case Screen::EditReps:v.title="Edit reps";v.lines={std::to_string(session_.current_reps())};v.footer="L1 +1  L2 -1  R1 save";break;

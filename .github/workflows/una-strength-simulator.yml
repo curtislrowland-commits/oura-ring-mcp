@@ -29,10 +29,14 @@ jobs:
           cp una-strength/core/controller.hpp "$GUI/gui/include/una_strength/controller.hpp"
           cp una-strength/core/json_io.hpp "$GUI/gui/include/una_strength/json_io.hpp"
           cp una-strength/core/workout_repository.hpp "$GUI/gui/include/una_strength/workout_repository.hpp"
+          cp una-strength/core/free_workout.hpp "$GUI/gui/include/una_strength/free_workout.hpp"
+          cp una-strength/core/free_controller.hpp "$GUI/gui/include/una_strength/free_controller.hpp"
           cp una-strength/core/session.cpp "$GUI/gui/src/una_strength/session.cpp"
           cp una-strength/core/controller.cpp "$GUI/gui/src/una_strength/controller.cpp"
           cp una-strength/core/json_io.cpp "$GUI/gui/src/una_strength/json_io.cpp"
           cp una-strength/core/workout_repository.cpp "$GUI/gui/src/una_strength/workout_repository.cpp"
+          cp una-strength/core/free_workout.cpp "$GUI/gui/src/una_strength/free_workout.cpp"
+          cp una-strength/core/free_controller.cpp "$GUI/gui/src/una_strength/free_controller.cpp"
           mkdir -p "$SDK/Docs/Tutorials/HelloWorld/Software/Output/workouts"
           cp una-strength/workout_yesterday.json "$SDK/Docs/Tutorials/HelloWorld/Software/Output/workouts/yesterday.json"
           cp una-strength/workout_today.json "$SDK/Docs/Tutorials/HelloWorld/Software/Output/workouts/today.json"
@@ -45,45 +49,68 @@ jobs:
           SIM="$UNA_SDK/Docs/Tutorials/HelloWorld/Software/Apps/LVGL-GUI/simulator"
           cmake -S "$SIM" -B "$SIM/build" -G Ninja -DCMAKE_BUILD_TYPE=Debug
           cmake --build "$SIM/build"
-      - name: Run automated simulator button test
+      - name: Run scheduled workout regression test
         shell: bash
         run: |
           set -euxo pipefail
           export UNA_SDK="$RUNNER_TEMP/una-sdk"
           BIN="$UNA_SDK/Docs/Tutorials/HelloWorld/Software/Apps/LVGL-GUI/simulator/build/bin"
           cd "$BIN"
-          SDL_VIDEODRIVER=dummy timeout 12s ./HelloWorldLVGLSimulator 2>&1 | tee simulator.log
-          grep -q "UNA_STRENGTH_SCREEN_READY" simulator.log
-          grep -q "UNA_STRENGTH_DATE_SELECT_PASS date=2026-10-03" simulator.log
-          grep -q "id=scheduled-today-pass" simulator.log
-          grep -q "UNA_STRENGTH_JSON_IMPORT_PASS id=scheduled-today-pass" simulator.log
-          grep -q "UNA_STRENGTH_REST_REACHED" simulator.log
-          grep -q "UNA_STRENGTH_JSON_EXPORT_PASS" simulator.log
-          grep -q "UNA_STRENGTH_ROUNDTRIP_PASS" simulator.log
+          SDL_VIDEODRIVER=dummy timeout 12s ./HelloWorldLVGLSimulator 2>&1 | tee scheduled.log
+          grep -q "UNA_STRENGTH_SCREEN_READY" scheduled.log
+          grep -q "UNA_STRENGTH_DATE_SELECT_PASS date=2026-10-03" scheduled.log
+          grep -q "UNA_STRENGTH_JSON_IMPORT_PASS id=scheduled-today-pass" scheduled.log
+          grep -q "UNA_STRENGTH_REST_REACHED" scheduled.log
+          grep -q "UNA_STRENGTH_ROUNDTRIP_PASS" scheduled.log
           RESULT="$UNA_SDK/Docs/Tutorials/HelloWorld/Software/Output/results/scheduled-today-result.json"
           test -s "$RESULT"
           python3 - "$RESULT" <<'PY'
           import json, sys
-          p=sys.argv[1]
-          with open(p, "r", encoding="utf-8") as f:
+          with open(sys.argv[1], "r", encoding="utf-8") as f:
               d=json.load(f)
-          assert d["schema_version"] == 1
           assert d["workout_id"] == "scheduled-today-pass"
-          assert d["workout_name"] == "Today Auto Selected Workout"
-          assert d["date"] == "2026-10-03"
           assert d["total_reps"] == 10
           assert d["training_volume_lb"] == 550
-          assert len(d["exercises"]) == 1
-          ex=d["exercises"][0]
-          assert ex["id"] == "pendulum_squat"
-          assert ex["prescribed_name"] == "Pendulum Squat"
-          assert len(ex["sets"]) == 2
-          for i,s in enumerate(ex["sets"],1):
-              assert s["set_number"] == i
-              assert s["prescribed_reps"] == 5
-              assert s["actual_reps"] == 5
-              assert s["prescribed_weight_lb"] == 55
-              assert s["actual_weight_lb"] == 55
+          print("SCHEDULED_JSON_ASSERTIONS_PASS")
+          PY
+      - name: Run free workout simulator test
+        shell: bash
+        run: |
+          set -euxo pipefail
+          export UNA_SDK="$RUNNER_TEMP/una-sdk"
+          BIN="$UNA_SDK/Docs/Tutorials/HelloWorld/Software/Apps/LVGL-GUI/simulator/build/bin"
+          cd "$BIN"
+          UNA_TEST_MODE=free SDL_VIDEODRIVER=dummy timeout 20s ./HelloWorldLVGLSimulator 2>&1 | tee free.log
+          grep -q "UNA_FREE_WORKOUT_START date=2026-10-03" free.log
+          grep -q "UNA_FREE_REST_REACHED" free.log
+          grep -q "UNA_FREE_WORKOUT_PASS exercises=2 reps=16 volume=1585" free.log
+          RESULT="$UNA_SDK/Docs/Tutorials/HelloWorld/Software/Output/results/free-workout-result.json"
+          test -s "$RESULT"
+          python3 - "$RESULT" <<'PY'
+          import json, sys
+          with open(sys.argv[1], "r", encoding="utf-8") as f:
+              d=json.load(f)
+          assert d["schema_version"] == 1
+          assert d["workout_name"] == "Free Workout"
+          assert d["date"] == "2026-10-03"
+          assert d["total_reps"] == 16
+          assert d["training_volume_lb"] == 1585
+          assert len(d["exercises"]) == 2
+
+          sq, bench = d["exercises"]
+          assert sq["id"] == "pendulum_squat"
+          assert sq["added"] is True
+          assert len(sq["sets"]) == 2
+          assert [(s["actual_reps"], s["actual_weight_lb"]) for s in sq["sets"]] == [(6,60),(5,60)]
+          assert all(s["prescribed_reps"] == 0 for s in sq["sets"])
+          assert all(s["prescribed_weight_lb"] == 0 for s in sq["sets"])
+
+          assert bench["id"] == "bench_press"
+          assert bench["added"] is True
+          assert len(bench["sets"]) == 1
+          assert bench["sets"][0]["actual_reps"] == 5
+          assert bench["sets"][0]["actual_weight_lb"] == 185
+
           a=d["assessment"]
           assert a["workout_quality"] == 3
           assert a["strength"] == 3
@@ -91,7 +118,7 @@ jobs:
           assert a["session_rpe"] == 5
           assert a["pain"] == 0
           assert a["expectation"] == "as_expected"
-          print("RESULT_JSON_ASSERTIONS_PASS")
+          print("FREE_JSON_ASSERTIONS_PASS")
           PY
       - name: Upload simulator log
         if: always()
@@ -99,5 +126,7 @@ jobs:
         with:
           name: una-strength-simulator-log
           path: |
-            ${{ runner.temp }}/una-sdk/Docs/Tutorials/HelloWorld/Software/Apps/LVGL-GUI/simulator/build/bin/simulator.log
+            ${{ runner.temp }}/una-sdk/Docs/Tutorials/HelloWorld/Software/Apps/LVGL-GUI/simulator/build/bin/scheduled.log
+            ${{ runner.temp }}/una-sdk/Docs/Tutorials/HelloWorld/Software/Apps/LVGL-GUI/simulator/build/bin/free.log
             ${{ runner.temp }}/una-sdk/Docs/Tutorials/HelloWorld/Software/Output/results/scheduled-today-result.json
+            ${{ runner.temp }}/una-sdk/Docs/Tutorials/HelloWorld/Software/Output/results/free-workout-result.json

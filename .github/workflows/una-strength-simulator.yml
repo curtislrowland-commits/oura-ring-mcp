@@ -55,6 +55,34 @@ jobs:
           cp una-strength/workout_yesterday.json "$SDK/Docs/Tutorials/HelloWorld/Software/Output/workouts/yesterday.json"
           cp una-strength/workout_today.json "$SDK/Docs/Tutorials/HelloWorld/Software/Output/workouts/today.json"
           cp una-strength/workout_tomorrow.json "$SDK/Docs/Tutorials/HelloWorld/Software/Output/workouts/tomorrow.json"
+      - name: Strict portable-core regression tests
+        shell: bash
+        run: |
+          set -euxo pipefail
+          SDK="$RUNNER_TEMP/una-sdk"
+          GUI="$SDK/Docs/Tutorials/HelloWorld/Software/Apps/LVGL-GUI"
+          INC="$GUI/gui/include"
+          SRC="$GUI/gui/src/una_strength"
+          CXXFLAGS="-std=c++17 -Wall -Wextra -Wpedantic -Werror -I$INC"
+          g++ $CXXFLAGS "$SRC/session.cpp" "$SRC/controller.cpp" "$SRC/heart_rate.cpp" una-strength/tests/rc1_session_test.cpp -o /tmp/rc1_session_test
+          g++ $CXXFLAGS "$SRC/session.cpp" "$SRC/controller.cpp" "$SRC/heart_rate.cpp" una-strength/tests/rc1_controller_hr_test.cpp -o /tmp/rc1_controller_hr_test
+          /tmp/rc1_session_test
+          /tmp/rc1_controller_hr_test
+
+      - name: Sanitizer portable-core regression tests
+        shell: bash
+        run: |
+          set -euxo pipefail
+          SDK="$RUNNER_TEMP/una-sdk"
+          GUI="$SDK/Docs/Tutorials/HelloWorld/Software/Apps/LVGL-GUI"
+          INC="$GUI/gui/include"
+          SRC="$GUI/gui/src/una_strength"
+          FLAGS="-std=c++17 -fsanitize=address,undefined -fno-omit-frame-pointer -I$INC"
+          g++ $FLAGS "$SRC/session.cpp" "$SRC/controller.cpp" "$SRC/heart_rate.cpp" una-strength/tests/rc1_session_test.cpp -o /tmp/rc1_session_san
+          g++ $FLAGS "$SRC/session.cpp" "$SRC/controller.cpp" "$SRC/heart_rate.cpp" una-strength/tests/rc1_controller_hr_test.cpp -o /tmp/rc1_controller_hr_san
+          ASAN_OPTIONS=detect_leaks=1 /tmp/rc1_session_san
+          ASAN_OPTIONS=detect_leaks=1 /tmp/rc1_controller_hr_san
+
       - name: Build official UNA LVGL simulator with UNA Strength
         shell: bash
         run: |

@@ -31,12 +31,14 @@ jobs:
           cp una-strength/core/workout_repository.hpp "$GUI/gui/include/una_strength/workout_repository.hpp"
           cp una-strength/core/free_workout.hpp "$GUI/gui/include/una_strength/free_workout.hpp"
           cp una-strength/core/free_controller.hpp "$GUI/gui/include/una_strength/free_controller.hpp"
+          cp una-strength/core/history.hpp "$GUI/gui/include/una_strength/history.hpp"
           cp una-strength/core/session.cpp "$GUI/gui/src/una_strength/session.cpp"
           cp una-strength/core/controller.cpp "$GUI/gui/src/una_strength/controller.cpp"
           cp una-strength/core/json_io.cpp "$GUI/gui/src/una_strength/json_io.cpp"
           cp una-strength/core/workout_repository.cpp "$GUI/gui/src/una_strength/workout_repository.cpp"
           cp una-strength/core/free_workout.cpp "$GUI/gui/src/una_strength/free_workout.cpp"
           cp una-strength/core/free_controller.cpp "$GUI/gui/src/una_strength/free_controller.cpp"
+          cp una-strength/core/history.cpp "$GUI/gui/src/una_strength/history.cpp"
           mkdir -p "$SDK/Docs/Tutorials/HelloWorld/Software/Output/workouts"
           cp una-strength/workout_yesterday.json "$SDK/Docs/Tutorials/HelloWorld/Software/Output/workouts/yesterday.json"
           cp una-strength/workout_today.json "$SDK/Docs/Tutorials/HelloWorld/Software/Output/workouts/today.json"
@@ -62,7 +64,7 @@ jobs:
           grep -q "UNA_STRENGTH_JSON_IMPORT_PASS id=scheduled-today-pass" scheduled.log
           grep -q "UNA_STRENGTH_REST_REACHED" scheduled.log
           grep -q "UNA_STRENGTH_ROUNDTRIP_PASS" scheduled.log
-          RESULT="$UNA_SDK/Docs/Tutorials/HelloWorld/Software/Output/results/scheduled-today-result.json"
+          RESULT="$(ls -1t "$UNA_SDK"/Docs/Tutorials/HelloWorld/Software/Output/results/*-scheduled.json | head -1)"
           test -s "$RESULT"
           python3 - "$RESULT" <<'PY'
           import json, sys
@@ -84,7 +86,7 @@ jobs:
           grep -q "UNA_FREE_WORKOUT_START date=2026-10-03" free.log
           grep -q "UNA_FREE_REST_REACHED" free.log
           grep -q "UNA_FREE_WORKOUT_PASS exercises=2 reps=16 volume=1585" free.log
-          RESULT="$UNA_SDK/Docs/Tutorials/HelloWorld/Software/Output/results/free-workout-result.json"
+          RESULT="$(ls -1t "$UNA_SDK"/Docs/Tutorials/HelloWorld/Software/Output/results/*-free.json | head -1)"
           test -s "$RESULT"
           python3 - "$RESULT" <<'PY'
           import json, sys
@@ -120,6 +122,31 @@ jobs:
           assert a["expectation"] == "as_expected"
           print("FREE_JSON_ASSERTIONS_PASS")
           PY
+      - name: Run workout history simulator test
+        shell: bash
+        run: |
+          set -euxo pipefail
+          export UNA_SDK="$RUNNER_TEMP/una-sdk"
+          BIN="$UNA_SDK/Docs/Tutorials/HelloWorld/Software/Apps/LVGL-GUI/simulator/build/bin"
+          cd "$BIN"
+          UNA_TEST_MODE=history SDL_VIDEODRIVER=dummy timeout 20s ./HelloWorldLVGLSimulator 2>&1 | tee history.log
+          grep -q "UNA_HISTORY_LOAD_PASS count=2" history.log
+          grep -q "UNA_HISTORY_DETAIL_PASS name=Free Workout reps=16 volume=1585 rpe=5" history.log
+          grep -q "UNA_HISTORY_DETAIL_PASS name=Today Auto Selected Workout reps=10 volume=550 rpe=5" history.log
+          python3 - "$UNA_SDK/Docs/Tutorials/HelloWorld/Software/Output/results" <<'PY'
+          import glob, json, os, sys
+          root=sys.argv[1]
+          files=glob.glob(os.path.join(root,"*.json"))
+          assert len(files) == 2, files
+          rows=[]
+          for p in files:
+              with open(p,encoding="utf-8") as f:
+                  d=json.load(f)
+              rows.append((d["ended_at_unix_ms"], d["workout_name"], d["total_reps"], d["training_volume_lb"]))
+          rows.sort(reverse=True)
+          assert {r[1] for r in rows} == {"Free Workout","Today Auto Selected Workout"}
+          print("HISTORY_JSON_ASSERTIONS_PASS")
+          PY
       - name: Upload simulator log
         if: always()
         uses: actions/upload-artifact@v4
@@ -128,5 +155,5 @@ jobs:
           path: |
             ${{ runner.temp }}/una-sdk/Docs/Tutorials/HelloWorld/Software/Apps/LVGL-GUI/simulator/build/bin/scheduled.log
             ${{ runner.temp }}/una-sdk/Docs/Tutorials/HelloWorld/Software/Apps/LVGL-GUI/simulator/build/bin/free.log
-            ${{ runner.temp }}/una-sdk/Docs/Tutorials/HelloWorld/Software/Output/results/scheduled-today-result.json
-            ${{ runner.temp }}/una-sdk/Docs/Tutorials/HelloWorld/Software/Output/results/free-workout-result.json
+            ${{ runner.temp }}/una-sdk/Docs/Tutorials/HelloWorld/Software/Apps/LVGL-GUI/simulator/build/bin/history.log
+            ${{ runner.temp }}/una-sdk/Docs/Tutorials/HelloWorld/Software/Output/results/*.json

@@ -15,6 +15,8 @@ public:
     bool finished() const { return finished_; }
     int current_reps() const { return edit_reps_; }
     double current_weight() const { return edit_weight_; }
+    const std::string& current_exercise_name() const { return result_.exercises.at(ex_).actual_name; }
+    const std::string& current_exercise_id() const { return result_.exercises.at(ex_).id; }
     void edit_reps(int reps);
     void edit_weight(double lb);
     void complete_set(std::uint64_t now_ms, std::uint64_t set_duration_ms, int auto_count=-1);

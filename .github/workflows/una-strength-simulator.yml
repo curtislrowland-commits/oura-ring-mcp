@@ -123,6 +123,19 @@ jobs:
           print("SCHEDULED_HR_ASSERTIONS_PASS", hr["sample_count"], hr["avg_bpm"], hr["max_bpm"])
           print("SCHEDULED_JSON_ASSERTIONS_PASS")
           PY
+      - name: Run Scheduled mutation-menu simulator test
+        shell: bash
+        run: |
+          set -euxo pipefail
+          export UNA_SDK="$RUNNER_TEMP/una-sdk"
+          BIN="$UNA_SDK/Docs/Tutorials/HelloWorld/Software/Apps/LVGL-GUI/simulator/build/bin"
+          cd "$BIN"
+          UNA_TEST_MODE=mutation SDL_VIDEODRIVER=dummy timeout 20s ./HelloWorldLVGLSimulator 2>&1 | tee mutation.log
+          grep -q "UNA_VIEW title=Workout options body=Add set" mutation.log
+          grep -q "UNA_VIEW title=Substitute body=Pendulum Squat" mutation.log
+          grep -q "UNA_VIEW title=Bench Press body=Set 1/3" mutation.log
+          grep -q "UNA_VIEW title=Add exercise body=Pendulum Squat" mutation.log
+
       - name: Run free workout simulator test
         shell: bash
         run: |

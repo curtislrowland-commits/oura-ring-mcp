@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <optional>
+#include "una_strength/heart_rate.hpp"
 
 namespace una_strength {
 
@@ -74,6 +75,7 @@ struct WorkoutResult {
     double training_volume_lb{0.0};
     std::vector<CompletedExercise> exercises;
     SubjectiveAssessment assessment;
+    HeartRateSummary heart_rate;
 };
 
 } // namespace una_strength

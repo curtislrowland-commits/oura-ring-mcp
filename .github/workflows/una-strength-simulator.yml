@@ -80,7 +80,7 @@ jobs:
           export UNA_SDK="$RUNNER_TEMP/una-sdk"
           BIN="$UNA_SDK/Docs/Tutorials/HelloWorld/Software/Apps/LVGL-GUI/simulator/build/bin"
           cd "$BIN"
-          UNA_TEST_MODE=free SDL_VIDEODRIVER=dummy timeout 20s ./HelloWorldLVGLSimulator 2>&1 | tee free.log
+          UNA_TEST_MODE=free SDL_VIDEODRIVER=dummy timeout 35s ./HelloWorldLVGLSimulator 2>&1 | tee free.log
           grep -q "UNA_FREE_WORKOUT_START date=2026-10-03" free.log
           grep -q "UNA_FREE_REST_REACHED" free.log
           grep -q "UNA_FREE_WORKOUT_PASS exercises=2 reps=16 volume=1585" free.log

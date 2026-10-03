@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "workout_id": "scheduled-today-pass",
+  "name": "Today Auto Selected Workout",
+  "scheduled_date": "2026-10-03",
+  "exercises": [
+    {
+      "id": "pendulum_squat",
+      "name": "Pendulum Squat",
+      "sets": [
+        {"target_reps": 5, "target_weight_lb": 55},
+        {"target_reps": 5, "target_weight_lb": 55}
+      ]
+    }
+  ]
+}

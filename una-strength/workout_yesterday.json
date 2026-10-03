@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "workout_id": "wrong-yesterday",
+  "name": "Yesterday Workout",
+  "scheduled_date": "2026-10-02",
+  "exercises": [{"id":"bench","name":"Bench Press","sets":[{"target_reps":99,"target_weight_lb":999}]}]
+}

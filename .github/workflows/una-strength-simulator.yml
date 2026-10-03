@@ -1,6 +1,10 @@
 name: UNA Strength Simulator Test
 on:
   workflow_dispatch:
+  push:
+    branches: [una-strength-rc1]
+    paths:
+      - RC1_TRIGGER
 jobs:
   simulator:
     runs-on: ubuntu-latest

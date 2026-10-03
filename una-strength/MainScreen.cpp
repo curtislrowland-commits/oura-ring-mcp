@@ -149,14 +149,6 @@ void MainScreen::renderHistory()
     }
 
     const auto& e = mHistory.at(mHistoryIndex);
-    if (mMode == LaunchMode::ScheduledError) {
-        if (b == Button::Back) {
-            mMode = LaunchMode::Menu;
-            renderLaunchMenu();
-        }
-        return;
-    }
-
     if (mMode == LaunchMode::HistoryList) {
         std::string body = e.date + "\n" + e.workout_name;
         lv_label_set_text(mTitle, "Workout History");
@@ -220,6 +212,14 @@ void MainScreen::onKey(uint8_t code)
             if (mLaunchIndex == 0) startScheduled();
             else if (mLaunchIndex == 1) startFree();
             else startHistory();
+        }
+        return;
+    }
+
+    if (mMode == LaunchMode::ScheduledError) {
+        if (b == Button::Back) {
+            mMode = LaunchMode::Menu;
+            renderLaunchMenu();
         }
         return;
     }

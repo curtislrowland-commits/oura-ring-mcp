@@ -1,0 +1,56 @@
+name: UNA Strength Simulator Test
+on:
+  push:
+    branches: [una-strength-simulator-test]
+  workflow_dispatch:
+jobs:
+  simulator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout test harness
+        uses: actions/checkout@v4
+      - name: Install simulator dependencies
+        run: sudo apt-get update && sudo apt-get install -y build-essential cmake ninja-build libsdl2-dev
+      - name: Clone official UNA SDK
+        run: git clone --depth 1 --recurse-submodules https://github.com/UNAWatch/una-sdk.git "$RUNNER_TEMP/una-sdk"
+      - name: Overlay UNA Strength onto official HelloWorld LVGL simulator
+        shell: bash
+        run: |
+          set -euxo pipefail
+          SDK="$RUNNER_TEMP/una-sdk"
+          GUI="$SDK/Docs/Tutorials/HelloWorld/Software/Apps/LVGL-GUI"
+          cp una-strength/MainScreen.hpp "$GUI/gui/include/gui/screens/MainScreen.hpp"
+          cp una-strength/MainScreen.cpp "$GUI/gui/src/screens/MainScreen.cpp"
+          cp una-strength/simulator_main.cpp "$GUI/simulator/main.cpp"
+          mkdir -p "$GUI/gui/include/una_strength" "$GUI/gui/src/una_strength"
+          cp una-strength/core/model.hpp "$GUI/gui/include/una_strength/model.hpp"
+          cp una-strength/core/session.hpp "$GUI/gui/include/una_strength/session.hpp"
+          cp una-strength/core/controller.hpp "$GUI/gui/include/una_strength/controller.hpp"
+          cp una-strength/core/session.cpp "$GUI/gui/src/una_strength/session.cpp"
+          cp una-strength/core/controller.cpp "$GUI/gui/src/una_strength/controller.cpp"
+      - name: Build official UNA LVGL simulator with UNA Strength
+        shell: bash
+        run: |
+          set -euxo pipefail
+          export UNA_SDK="$RUNNER_TEMP/una-sdk"
+          SIM="$UNA_SDK/Docs/Tutorials/HelloWorld/Software/Apps/LVGL-GUI/simulator"
+          cmake -S "$SIM" -B "$SIM/build" -G Ninja -DCMAKE_BUILD_TYPE=Debug
+          cmake --build "$SIM/build"
+      - name: Run automated simulator button test
+        shell: bash
+        run: |
+          set -euxo pipefail
+          export UNA_SDK="$RUNNER_TEMP/una-sdk"
+          BIN="$UNA_SDK/Docs/Tutorials/HelloWorld/Software/Apps/LVGL-GUI/simulator/build/bin"
+          cd "$BIN"
+          SDL_VIDEODRIVER=dummy timeout 12s ./HelloWorldLVGLSimulator 2>&1 | tee simulator.log
+          grep -q "UNA_STRENGTH_SCREEN_READY" simulator.log
+          grep -q "UNA_STRENGTH_REST_REACHED" simulator.log
+          grep -q "UNA_STRENGTH_SMOKE_PASS" simulator.log
+      - name: Upload simulator log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: una-strength-simulator-log
+          path: ${{ runner.temp }}/una-sdk/Docs/Tutorials/HelloWorld/Software/Apps/LVGL-GUI/simulator/build/bin/simulator.log

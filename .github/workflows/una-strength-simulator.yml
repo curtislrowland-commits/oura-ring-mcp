@@ -1,7 +1,5 @@
 name: UNA Strength Simulator Test
 on:
-  push:
-    branches: [una-strength-simulator-test]
   workflow_dispatch:
 jobs:
   simulator:

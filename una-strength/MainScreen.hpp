@@ -11,6 +11,7 @@
 #include "una_strength/workout_repository.hpp"
 #include "una_strength/free_controller.hpp"
 #include "una_strength/history.hpp"
+#include "una_strength/heart_rate.hpp"
 #include <vector>
 class MainScreen : public ModelListener {
 public:
@@ -19,6 +20,7 @@ public:
     MainScreen(const MainScreen&) = delete;
     MainScreen& operator=(const MainScreen&) = delete;
     lv_obj_t* root() const { return mRoot; }
+    void updateHR(float bpm, float trustLevel, std::uint32_t timestampMs) override;
 private:
     void onKey(uint8_t code);
     static void keyEventCb(lv_event_t* e);
@@ -35,6 +37,7 @@ private:
     int mLaunchIndex = 0;
     std::vector<una_strength::HistoryEntry> mHistory;
     std::size_t mHistoryIndex = 0;
+    una_strength::HeartRateTracker mHeartRate;
     una_strength::WorkoutPlan mPlan;
     std::unique_ptr<una_strength::WorkoutController> mController;
     std::unique_ptr<una_strength::FreeWorkoutController> mFreeController;

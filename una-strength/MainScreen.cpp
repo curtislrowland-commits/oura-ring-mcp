@@ -64,6 +64,19 @@ MainScreen::~MainScreen()
     lv_obj_delete(mRoot);
 }
 
+void MainScreen::updateHR(float bpm, float trustLevel, std::uint32_t timestampMs)
+{
+    if (mMode != LaunchMode::Scheduled && mMode != LaunchMode::Free) return;
+    const auto before = mHeartRate.summary().sample_count;
+    mHeartRate.add(timestampMs, bpm, trustLevel);
+    const auto after = mHeartRate.summary();
+    if (after.sample_count > before) {
+        LOG_INFO("UNA_HR_ACCEPT bpm=%d trust=%.1f count=%d\n",
+                 after.samples.back().bpm, after.samples.back().trust_level,
+                 after.sample_count);
+    }
+}
+
 void MainScreen::startScheduled()
 {
     auto& fs = SDK::KernelProviderGUI::GetInstance().getKernel().fs;
@@ -149,6 +162,10 @@ void MainScreen::renderHistory()
         std::string body = e.date + "\nReps: " + std::to_string(e.total_reps) +
                            "\nVolume: " + std::to_string(static_cast<int>(e.training_volume_lb)) +
                            " lb\nRPE: " + std::to_string(e.session_rpe);
+        if (e.hr_sample_count > 0) {
+            body += "\nHR " + std::to_string(static_cast<int>(e.hr_avg_bpm)) +
+                    " avg / " + std::to_string(e.hr_max_bpm) + " max";
+        }
         lv_label_set_text(mTitle, e.workout_name.c_str());
         lv_label_set_text(mBody, body.c_str());
         lv_label_set_text(mFooter, "R2 back");
@@ -247,6 +264,11 @@ void MainScreen::render()
         if (i) body += "\n";
         body += v.lines[i];
     }
+    const auto liveHr = mHeartRate.summary();
+    if (liveHr.available && !liveHr.samples.empty() &&
+        (mMode == LaunchMode::Scheduled || mMode == LaunchMode::Free)) {
+        body += "\nHR: " + std::to_string(liveHr.samples.back().bpm) + " bpm";
+    }
 
     lv_label_set_text(mTitle, v.title.c_str());
     lv_label_set_text(mBody, body.c_str());
@@ -275,6 +297,17 @@ void MainScreen::render()
     if (!result) {
         LOG_ERROR("UNA_STRENGTH_JSON_EXPORT_FAIL error=no result\n");
         return;
+    }
+
+    WorkoutResult resultWithHr = *result;
+    resultWithHr.heart_rate = mHeartRate.summary();
+    result = &resultWithHr;
+    if (result->heart_rate.available) {
+        LOG_INFO("UNA_HR_SUMMARY_PASS samples=%d min=%d avg=%.1f max=%d\n",
+                 result->heart_rate.sample_count, result->heart_rate.min_bpm,
+                 result->heart_rate.avg_bpm, result->heart_rate.max_bpm);
+    } else {
+        LOG_INFO("UNA_HR_SUMMARY_UNAVAILABLE\n");
     }
 
     auto& fs = SDK::KernelProviderGUI::GetInstance().getKernel().fs;

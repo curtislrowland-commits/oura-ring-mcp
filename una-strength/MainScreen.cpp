@@ -25,7 +25,10 @@ MainScreen::MainScreen(Model& model)
 {
     auto& fs = SDK::KernelProviderGUI::GetInstance().getKernel().fs;
     std::string error;
-    mWorkoutLoaded = JsonIO::loadWorkout(fs, "workouts/today.json", mPlan, error);
+    const std::string today = WorkoutRepository::localDate();
+    std::string selectedPath;
+    mWorkoutLoaded = WorkoutRepository::loadScheduledForDate(
+        fs, "workouts", today, mPlan, selectedPath, error);
 
     if (!mWorkoutLoaded) {
         LOG_ERROR("UNA_STRENGTH_JSON_IMPORT_FAIL error=%s\n", error.c_str());
@@ -40,6 +43,8 @@ MainScreen::MainScreen(Model& model)
         ex.sets.push_back({1, 0.0});
         mPlan.exercises.push_back(ex);
     } else {
+        LOG_INFO("UNA_STRENGTH_DATE_SELECT_PASS date=%s path=%s id=%s\n",
+                 today.c_str(), selectedPath.c_str(), mPlan.workout_id.c_str());
         LOG_INFO("UNA_STRENGTH_JSON_IMPORT_PASS id=%s name=%s exercises=%u\n",
                  mPlan.workout_id.c_str(), mPlan.name.c_str(),
                  static_cast<unsigned>(mPlan.exercises.size()));
@@ -141,13 +146,13 @@ void MainScreen::render()
         fs.mkdir("results");
 
         std::string error;
-        const char* resultPath = "results/una-json-roundtrip-result.json";
+        const char* resultPath = "results/scheduled-today-result.json";
         if (JsonIO::saveResult(fs, resultPath, *result, error)) {
             mResultSaved = true;
             LOG_INFO("UNA_STRENGTH_JSON_EXPORT_PASS path=%s reps=%d volume=%.0f\n",
                      resultPath, result->total_reps, result->training_volume_lb);
             if (mWorkoutLoaded &&
-                result->workout_id == "una-json-roundtrip" &&
+                result->workout_id == "scheduled-today-pass" &&
                 result->total_reps == 10 &&
                 result->training_volume_lb == 550.0) {
                 LOG_INFO("UNA_STRENGTH_ROUNDTRIP_PASS\n");

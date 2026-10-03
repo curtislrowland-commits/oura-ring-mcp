@@ -8,6 +8,7 @@
 #include "gui/model/ModelListener.hpp"
 #include "una_strength/controller.hpp"
 #include "una_strength/json_io.hpp"
+#include "una_strength/workout_repository.hpp"
 class MainScreen : public ModelListener {
 public:
     explicit MainScreen(Model& model);

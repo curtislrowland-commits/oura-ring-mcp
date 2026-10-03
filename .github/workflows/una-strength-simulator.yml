@@ -333,9 +333,15 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: una-strength-simulator-log
+          name: una-strength-rc1-evidence
           path: |
             ${{ runner.temp }}/una-sdk/Docs/Tutorials/HelloWorld/Software/Apps/LVGL-GUI/simulator/build/bin/scheduled.log
             ${{ runner.temp }}/una-sdk/Docs/Tutorials/HelloWorld/Software/Apps/LVGL-GUI/simulator/build/bin/free.log
             ${{ runner.temp }}/una-sdk/Docs/Tutorials/HelloWorld/Software/Apps/LVGL-GUI/simulator/build/bin/history.log
+            ${{ runner.temp }}/una-sdk/Docs/Tutorials/HelloWorld/Software/Apps/LVGL-GUI/simulator/build/bin/mutation.log
+            ${{ runner.temp }}/una-sdk/Docs/Tutorials/HelloWorld/Software/Apps/LVGL-GUI/simulator/build/bin/duplicate.log
+            ${{ runner.temp }}/una-sdk/Docs/Tutorials/HelloWorld/Software/Apps/LVGL-GUI/simulator/build/bin/corrupt.log
+            ${{ runner.temp }}/una-sdk/Docs/Tutorials/HelloWorld/Software/Apps/LVGL-GUI/simulator/build/bin/missing.log
             ${{ runner.temp }}/una-sdk/Docs/Tutorials/HelloWorld/Software/Output/results/*.json
+            ${{ runner.temp }}/una-sdk/Docs/Tutorials/HelloWorld/Software/OutputRC1/UNAStrength-RC1.uapp
+            rc1-summary.txt

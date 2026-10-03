@@ -43,6 +43,8 @@ jobs:
           cp una-strength/core/history.hpp "$GUI/gui/include/una_strength/history.hpp"
           cp una-strength/core/heart_rate.hpp "$GUI/gui/include/una_strength/heart_rate.hpp"
           cp una-strength/core/una_hr_adapter.hpp "$GUI/gui/include/una_strength/una_hr_adapter.hpp"
+          cp una-strength/core/rep_counter.hpp "$GUI/gui/include/una_strength/rep_counter.hpp"
+          cp una-strength/core/una_motion_adapter.hpp "$GUI/gui/include/una_strength/una_motion_adapter.hpp"
           cp una-strength/core/session.cpp "$GUI/gui/src/una_strength/session.cpp"
           cp una-strength/core/controller.cpp "$GUI/gui/src/una_strength/controller.cpp"
           cp una-strength/core/json_io.cpp "$GUI/gui/src/una_strength/json_io.cpp"
@@ -51,6 +53,7 @@ jobs:
           cp una-strength/core/free_controller.cpp "$GUI/gui/src/una_strength/free_controller.cpp"
           cp una-strength/core/history.cpp "$GUI/gui/src/una_strength/history.cpp"
           cp una-strength/core/heart_rate.cpp "$GUI/gui/src/una_strength/heart_rate.cpp"
+          cp una-strength/core/rep_counter.cpp "$GUI/gui/src/una_strength/rep_counter.cpp"
           mkdir -p "$SDK/Docs/Tutorials/HelloWorld/Software/Output/workouts"
           cp una-strength/workout_yesterday.json "$SDK/Docs/Tutorials/HelloWorld/Software/Output/workouts/yesterday.json"
           cp una-strength/workout_today.json "$SDK/Docs/Tutorials/HelloWorld/Software/Output/workouts/today.json"
@@ -66,8 +69,11 @@ jobs:
           CXXFLAGS="-std=c++17 -Wall -Wextra -Wpedantic -Werror -I$INC"
           g++ $CXXFLAGS "$SRC/session.cpp" "$SRC/controller.cpp" "$SRC/heart_rate.cpp" una-strength/tests/rc1_session_test.cpp -o /tmp/rc1_session_test
           g++ $CXXFLAGS "$SRC/session.cpp" "$SRC/controller.cpp" "$SRC/heart_rate.cpp" una-strength/tests/rc1_controller_hr_test.cpp -o /tmp/rc1_controller_hr_test
+          g++ $CXXFLAGS "$SRC/session.cpp" "$SRC/rep_counter.cpp" una-strength/tests/rc1_rep_counter_test.cpp -o /tmp/rc1_rep_counter_test
+          printf '#include "una_strength/una_motion_adapter.hpp"\nint main(){return 0;}\n' | g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I"$INC" -I"$SDK/Libs/Header" -x c++ - -c -o /tmp/una_motion_adapter.o
           /tmp/rc1_session_test
           /tmp/rc1_controller_hr_test
+          /tmp/rc1_rep_counter_test
 
       - name: Sanitizer portable-core regression tests
         shell: bash
@@ -80,8 +86,10 @@ jobs:
           FLAGS="-std=c++17 -fsanitize=address,undefined -fno-omit-frame-pointer -I$INC"
           g++ $FLAGS "$SRC/session.cpp" "$SRC/controller.cpp" "$SRC/heart_rate.cpp" una-strength/tests/rc1_session_test.cpp -o /tmp/rc1_session_san
           g++ $FLAGS "$SRC/session.cpp" "$SRC/controller.cpp" "$SRC/heart_rate.cpp" una-strength/tests/rc1_controller_hr_test.cpp -o /tmp/rc1_controller_hr_san
+          g++ $FLAGS "$SRC/session.cpp" "$SRC/rep_counter.cpp" una-strength/tests/rc1_rep_counter_test.cpp -o /tmp/rc1_rep_counter_san
           ASAN_OPTIONS=detect_leaks=1 /tmp/rc1_session_san
           ASAN_OPTIONS=detect_leaks=1 /tmp/rc1_controller_hr_san
+          ASAN_OPTIONS=detect_leaks=1 /tmp/rc1_rep_counter_san
 
       - name: Build official UNA LVGL simulator with UNA Strength
         shell: bash
@@ -275,6 +283,8 @@ jobs:
           free_workout=PASS
           history=PASS
           heart_rate_simulator=PASS
+          rep_count_synthetic_profiles=PASS
+          motion_adapter_sdk_compile=PASS
           duplicate_workout_safe_failure=PASS
           corrupt_workout_safe_failure=PASS
           missing_workout_safe_failure=PASS

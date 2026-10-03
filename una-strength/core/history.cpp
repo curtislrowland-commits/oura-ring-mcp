@@ -35,7 +35,8 @@ bool WorkoutHistory::readEntry(SDK::Interface::IFileSystem& fs,
 
     double started=0, ended=0, duration=0;
     int32_t totalReps=0, quality=0, rpe=0, pain=0;
-    double volume=0;
+    double volume=0, hrAvg=0;
+    int32_t hrCount=0, hrMin=0, hrMax=0;
 
     if(!getString(r,"workout_id",out.workout_id) ||
        !getString(r,"workout_name",out.workout_name) ||
@@ -46,6 +47,10 @@ bool WorkoutHistory::readEntry(SDK::Interface::IFileSystem& fs,
        !r.get("total_reps",totalReps) ||
        !r.get("training_volume_lb",volume)) return false;
 
+    r.get("heart_rate.sample_count",hrCount);
+    r.get("heart_rate.min_bpm",hrMin);
+    r.get("heart_rate.max_bpm",hrMax);
+    r.get("heart_rate.avg_bpm",hrAvg);
     r.get("assessment.workout_quality",quality);
     r.get("assessment.session_rpe",rpe);
     r.get("assessment.pain",pain);
@@ -60,6 +65,10 @@ bool WorkoutHistory::readEntry(SDK::Interface::IFileSystem& fs,
     out.workout_quality=static_cast<int>(quality);
     out.session_rpe=static_cast<int>(rpe);
     out.pain=static_cast<int>(pain);
+    out.hr_sample_count=static_cast<int>(hrCount);
+    out.hr_min_bpm=static_cast<int>(hrMin);
+    out.hr_max_bpm=static_cast<int>(hrMax);
+    out.hr_avg_bpm=hrAvg;
     return true;
 }
 

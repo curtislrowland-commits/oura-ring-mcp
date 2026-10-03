@@ -28,7 +28,7 @@ static void tap(SDL_Keycode key)
     e.type=SDL_KEYDOWN; e.key.keysym.sym=key; SDL_PushEvent(&e);
     std::this_thread::sleep_for(std::chrono::milliseconds(70));
     e.type=SDL_KEYUP; e.key.keysym.sym=key; SDL_PushEvent(&e);
-    std::this_thread::sleep_for(std::chrono::milliseconds(180));
+    std::this_thread::sleep_for(std::chrono::milliseconds(350));
 }
 
 static void scheduledFlow()

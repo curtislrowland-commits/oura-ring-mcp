@@ -20,6 +20,10 @@ struct HistoryEntry {
     int session_rpe{0};
     int pain{0};
     std::string expectation;
+    int hr_sample_count{0};
+    int hr_min_bpm{0};
+    int hr_max_bpm{0};
+    double hr_avg_bpm{0.0};
 };
 
 class WorkoutHistory {

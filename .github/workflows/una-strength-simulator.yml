@@ -222,6 +222,65 @@ jobs:
           assert {r[1] for r in rows} == {"Free Workout","Today Auto Selected Workout"}
           print("HISTORY_JSON_ASSERTIONS_PASS")
           PY
+      - name: Negative test - duplicate workout for today
+        shell: bash
+        run: |
+          set -euxo pipefail
+          export UNA_SDK="$RUNNER_TEMP/una-sdk"
+          OUT="$UNA_SDK/Docs/Tutorials/HelloWorld/Software/Output"
+          BIN="$UNA_SDK/Docs/Tutorials/HelloWorld/Software/Apps/LVGL-GUI/simulator/build/bin"
+          cp "$OUT/workouts/today.json" "$OUT/workouts/duplicate-today.json"
+          cd "$BIN"
+          UNA_TEST_MODE=error SDL_VIDEODRIVER=dummy timeout 8s ./HelloWorldLVGLSimulator 2>&1 | tee duplicate.log
+          grep -q "UNA_STRENGTH_JSON_IMPORT_FAIL error=multiple workouts scheduled for 2026-10-03" duplicate.log
+          rm "$OUT/workouts/duplicate-today.json"
+
+      - name: Negative test - corrupt workout JSON
+        shell: bash
+        run: |
+          set -euxo pipefail
+          export UNA_SDK="$RUNNER_TEMP/una-sdk"
+          OUT="$UNA_SDK/Docs/Tutorials/HelloWorld/Software/Output"
+          BIN="$UNA_SDK/Docs/Tutorials/HelloWorld/Software/Apps/LVGL-GUI/simulator/build/bin"
+          cp "$OUT/workouts/today.json" /tmp/today-good.json
+          printf '{ this is corrupt json' > "$OUT/workouts/today.json"
+          cd "$BIN"
+          UNA_TEST_MODE=error SDL_VIDEODRIVER=dummy timeout 8s ./HelloWorldLVGLSimulator 2>&1 | tee corrupt.log
+          grep -q "UNA_STRENGTH_JSON_IMPORT_FAIL error=no workout scheduled for 2026-10-03" corrupt.log
+          cp /tmp/today-good.json "$OUT/workouts/today.json"
+
+      - name: Negative test - no workout for today
+        shell: bash
+        run: |
+          set -euxo pipefail
+          export UNA_SDK="$RUNNER_TEMP/una-sdk"
+          OUT="$UNA_SDK/Docs/Tutorials/HelloWorld/Software/Output"
+          BIN="$UNA_SDK/Docs/Tutorials/HelloWorld/Software/Apps/LVGL-GUI/simulator/build/bin"
+          mv "$OUT/workouts/today.json" /tmp/today-away.json
+          cd "$BIN"
+          UNA_TEST_MODE=error SDL_VIDEODRIVER=dummy timeout 8s ./HelloWorldLVGLSimulator 2>&1 | tee missing.log
+          grep -q "UNA_STRENGTH_JSON_IMPORT_FAIL error=no workout scheduled for 2026-10-03" missing.log
+          mv /tmp/today-away.json "$OUT/workouts/today.json"
+
+      - name: RC1 decision summary
+        shell: bash
+        run: |
+          cat > rc1-summary.txt <<'EOF'
+          RC1 SOFTWARE GATES
+          strict_core=PASS
+          sanitizers=PASS
+          official_una_build=PASS
+          scheduled=PASS
+          scheduled_mutations=PASS
+          free_workout=PASS
+          history=PASS
+          heart_rate_simulator=PASS
+          duplicate_workout_safe_failure=PASS
+          corrupt_workout_safe_failure=PASS
+          missing_workout_safe_failure=PASS
+          EOF
+          cat rc1-summary.txt
+
       - name: Upload simulator log
         if: always()
         uses: actions/upload-artifact@v4

@@ -3,7 +3,6 @@
 #include <cmath>
 #include <iomanip>
 #include <sstream>
-#include <stdexcept>
 namespace una_strength {
 const std::vector<ExercisePlan>& WorkoutController::exercise_library(){
     static const std::vector<ExercisePlan> lib={
@@ -15,7 +14,7 @@ const std::vector<ExercisePlan>& WorkoutController::exercise_library(){
     };
     return lib;
 }
-WorkoutController::WorkoutController(const WorkoutPlan& plan, std::uint64_t start_ms):session_(plan,start_ms),set_started_ms_(start_ms),last_now_ms_(start_ms){ if(session_.finished()) throw std::runtime_error("workout has no sets"); }
+WorkoutController::WorkoutController(const WorkoutPlan& plan, std::uint64_t start_ms):session_(plan,start_ms),set_started_ms_(start_ms),last_now_ms_(start_ms){}
 std::string WorkoutController::weight_string(double value){ std::ostringstream x; if(std::fabs(value-std::round(value))<0.001)x<<static_cast<int>(std::round(value)); else x<<std::fixed<<std::setprecision(1)<<value; return x.str(); }
 std::string WorkoutController::duration_string(std::uint64_t ms){ auto total=ms/1000; auto min=total/60; auto sec=total%60; std::ostringstream x; x<<min<<':'<<std::setw(2)<<std::setfill('0')<<sec; return x.str(); }
 void WorkoutController::press(Button b,std::uint64_t now_ms){ last_now_ms_=now_ms; switch(screen_){

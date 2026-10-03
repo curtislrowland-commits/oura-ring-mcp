@@ -9,6 +9,7 @@
 #include "una_strength/controller.hpp"
 #include "una_strength/json_io.hpp"
 #include "una_strength/workout_repository.hpp"
+#include "una_strength/free_controller.hpp"
 class MainScreen : public ModelListener {
 public:
     explicit MainScreen(Model& model);
@@ -27,9 +28,16 @@ private:
     lv_obj_t* mBody = nullptr;
     lv_obj_t* mFooter = nullptr;
     std::unique_ptr<SDK::LVGL::Buttons> mButtons;
+    enum class LaunchMode { Menu, Scheduled, Free };
+    LaunchMode mMode = LaunchMode::Menu;
+    int mLaunchIndex = 0;
     una_strength::WorkoutPlan mPlan;
     std::unique_ptr<una_strength::WorkoutController> mController;
+    std::unique_ptr<una_strength::FreeWorkoutController> mFreeController;
     bool mResultSaved = false;
     bool mWorkoutLoaded = false;
+    void startScheduled();
+    void startFree();
+    void renderLaunchMenu();
 };
 #endif

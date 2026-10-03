@@ -21,7 +21,7 @@ int main(){
   c.press(Button::Select,1160);
   assert(c.view(1160).screen==Screen::ChooseSubstitute);
   c.press(Button::Down,1170);c.press(Button::Select,1180);
-  assert(c.view(1180).title=="Bench Press";
+  assert(c.view(1180).title=="Bench Press");
 
   HeartRateTracker h;
   h.add(1000,0,3);h.add(2000,300,3);h.add(3000,120,0);

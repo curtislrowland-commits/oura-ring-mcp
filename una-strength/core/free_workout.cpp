@@ -1,6 +1,5 @@
 #include "una_strength/free_workout.hpp"
 #include <algorithm>
-#include <stdexcept>
 
 namespace una_strength {
 
@@ -50,19 +49,17 @@ bool FreeWorkoutSession::addExercise(std::size_t libraryIndex)
 
 void FreeWorkoutSession::setPendingReps(int reps)
 {
-    if (reps < 0 || reps > 1000) throw std::runtime_error("invalid reps");
-    pending_reps_ = reps;
+    pending_reps_ = std::max(0, std::min(1000, reps));
 }
 
 void FreeWorkoutSession::setPendingWeight(double weight)
 {
-    if (weight < 0 || weight > 5000) throw std::runtime_error("invalid weight");
-    pending_weight_ = weight;
+    pending_weight_ = std::max(0.0, std::min(5000.0, weight));
 }
 
 void FreeWorkoutSession::completeSet(std::uint64_t now_ms, std::uint64_t set_duration_ms)
 {
-    if (!hasExercise()) throw std::runtime_error("no exercise selected");
+    if (!hasExercise()) return;
     CompletedSet s;
     s.set_number = static_cast<int>(result_.exercises[current_exercise_].sets.size() + 1);
     s.prescribed_reps = 0;
@@ -119,7 +116,7 @@ void FreeWorkoutSession::recalcTotals()
 
 WorkoutResult FreeWorkoutSession::finish(std::uint64_t end_ms, const SubjectiveAssessment& assessment)
 {
-    if (result_.exercises.empty()) throw std::runtime_error("free workout has no exercises");
+    if (result_.exercises.empty()) return result_;
     result_.ended_at_unix_ms = end_ms;
     result_.duration_ms = end_ms - result_.started_at_unix_ms;
     result_.assessment = assessment;

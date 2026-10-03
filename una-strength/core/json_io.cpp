@@ -88,6 +88,22 @@ bool JsonIO::saveResult(SDK::Interface::IFileSystem& fs,const char* path,const W
         w.endArray(); w.endMap();
     }
     w.endArray();
+    w.startMap("heart_rate");
+    w.add("available",result.heart_rate.available);
+    w.add("sample_count",static_cast<int32_t>(result.heart_rate.sample_count));
+    w.add("min_bpm",static_cast<int32_t>(result.heart_rate.min_bpm));
+    w.add("max_bpm",static_cast<int32_t>(result.heart_rate.max_bpm));
+    w.add("avg_bpm",result.heart_rate.avg_bpm);
+    w.startArray("samples");
+    for(const auto& h:result.heart_rate.samples){
+        w.startMap();
+        w.add("timestamp_ms",h.timestamp_ms);
+        w.add("bpm",static_cast<int32_t>(h.bpm));
+        w.add("trust_level",static_cast<double>(h.trust_level));
+        w.endMap();
+    }
+    w.endArray();
+    w.endMap();
     w.startMap("assessment");
     w.add("workout_quality",static_cast<int32_t>(result.assessment.workout_quality));
     w.add("strength",static_cast<int32_t>(result.assessment.strength));

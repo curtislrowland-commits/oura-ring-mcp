@@ -66,7 +66,7 @@ jobs:
           GUI="$SDK/Docs/Tutorials/HelloWorld/Software/Apps/LVGL-GUI"
           INC="$GUI/gui/include"
           SRC="$GUI/gui/src/una_strength"
-          CXXFLAGS="-std=c++17 -Wall -Wextra -Wpedantic -Werror -I$INC"
+          CXXFLAGS="-std=c++17 -Wall -Wextra -Wpedantic -Werror -fno-exceptions -I$INC"
           g++ $CXXFLAGS "$SRC/session.cpp" "$SRC/controller.cpp" "$SRC/heart_rate.cpp" una-strength/tests/rc1_session_test.cpp -o /tmp/rc1_session_test
           g++ $CXXFLAGS "$SRC/session.cpp" "$SRC/controller.cpp" "$SRC/heart_rate.cpp" una-strength/tests/rc1_controller_hr_test.cpp -o /tmp/rc1_controller_hr_test
           g++ $CXXFLAGS "$SRC/session.cpp" "$SRC/rep_counter.cpp" una-strength/tests/rc1_rep_counter_test.cpp -o /tmp/rc1_rep_counter_test
@@ -275,7 +275,7 @@ jobs:
         run: |
           set -euxo pipefail
           SDK="$RUNNER_TEMP/una-sdk"
-          mkdir -p "$SDK/Docs/Tutorials/HelloWorld/Software/OutputRC1"
+          mkdir -p "$SDK/Docs/Tutorials/HelloWorld/OutputRC1"
           docker run --rm             -v "$SDK:/workspace/una-sdk"             -w /workspace/una-sdk             xanderhendriks/stm32cubeide:16.0             bash -lc '
               set -euxo pipefail
               apt-get -o Acquire::By-Hash=yes update
@@ -302,9 +302,9 @@ jobs:
               UAPP=$(find . -maxdepth 1 -name "*.uapp" -type f | head -n 1)
               test -n "$UAPP"
               test -s "$UAPP"
-              cp "$UAPP" /workspace/una-sdk/Docs/Tutorials/HelloWorld/Software/OutputRC1/UNAStrength-RC1.uapp
+              cp "$UAPP" /workspace/una-sdk/Docs/Tutorials/HelloWorld/OutputRC1/UNAStrength-RC1.uapp
             '
-          test -s "$SDK/Docs/Tutorials/HelloWorld/Software/OutputRC1/UNAStrength-RC1.uapp"
+          test -s "$SDK/Docs/Tutorials/HelloWorld/OutputRC1/UNAStrength-RC1.uapp"
           ls -lh "$SDK/Docs/Tutorials/HelloWorld/Software/OutputRC1/UNAStrength-RC1.uapp"
 
       - name: RC1 decision summary
@@ -343,5 +343,5 @@ jobs:
             ${{ runner.temp }}/una-sdk/Docs/Tutorials/HelloWorld/Software/Apps/LVGL-GUI/simulator/build/bin/corrupt.log
             ${{ runner.temp }}/una-sdk/Docs/Tutorials/HelloWorld/Software/Apps/LVGL-GUI/simulator/build/bin/missing.log
             ${{ runner.temp }}/una-sdk/Docs/Tutorials/HelloWorld/Software/Output/results/*.json
-            ${{ runner.temp }}/una-sdk/Docs/Tutorials/HelloWorld/Software/OutputRC1/UNAStrength-RC1.uapp
+            ${{ runner.temp }}/una-sdk/Docs/Tutorials/HelloWorld/OutputRC1/UNAStrength-RC1.uapp
             rc1-summary.txt

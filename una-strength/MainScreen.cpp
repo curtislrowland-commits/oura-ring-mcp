@@ -107,9 +107,59 @@ void MainScreen::startFree()
     render();
 }
 
+void MainScreen::startHistory()
+{
+    auto& fs = SDK::KernelProviderGUI::GetInstance().getKernel().fs;
+    std::string error;
+    if (!WorkoutHistory::load(fs, "results", mHistory, error)) {
+        mHistory.clear();
+        mMode = LaunchMode::HistoryList;
+        lv_label_set_text(mTitle, "Workout History");
+        lv_label_set_text(mBody, "No completed workouts");
+        lv_label_set_text(mFooter, "R2 back");
+        LOG_INFO("UNA_HISTORY_EMPTY error=%s\n", error.c_str());
+        return;
+    }
+    mHistoryIndex = 0;
+    mMode = LaunchMode::HistoryList;
+    LOG_INFO("UNA_HISTORY_LOAD_PASS count=%u newest=%s\n",
+             static_cast<unsigned>(mHistory.size()),
+             mHistory.front().workout_name.c_str());
+    renderHistory();
+}
+
+void MainScreen::renderHistory()
+{
+    if (mHistory.empty()) {
+        lv_label_set_text(mTitle, "Workout History");
+        lv_label_set_text(mBody, "No completed workouts");
+        lv_label_set_text(mFooter, "R2 back");
+        return;
+    }
+
+    const auto& e = mHistory.at(mHistoryIndex);
+    if (mMode == LaunchMode::HistoryList) {
+        std::string body = e.date + "\n" + e.workout_name;
+        lv_label_set_text(mTitle, "Workout History");
+        lv_label_set_text(mBody, body.c_str());
+        lv_label_set_text(mFooter, "L1/L2 browse R1 open R2 back");
+        LOG_INFO("UNA_HISTORY_LIST index=%u name=%s date=%s\n",
+                 static_cast<unsigned>(mHistoryIndex), e.workout_name.c_str(), e.date.c_str());
+    } else {
+        std::string body = e.date + "\nReps: " + std::to_string(e.total_reps) +
+                           "\nVolume: " + std::to_string(static_cast<int>(e.training_volume_lb)) +
+                           " lb\nRPE: " + std::to_string(e.session_rpe);
+        lv_label_set_text(mTitle, e.workout_name.c_str());
+        lv_label_set_text(mBody, body.c_str());
+        lv_label_set_text(mFooter, "R2 back");
+        LOG_INFO("UNA_HISTORY_DETAIL_PASS name=%s reps=%d volume=%.0f rpe=%d\n",
+                 e.workout_name.c_str(), e.total_reps, e.training_volume_lb, e.session_rpe);
+    }
+}
+
 void MainScreen::renderLaunchMenu()
 {
-    static const char* options[] = {"Scheduled Workout", "Free Workout"};
+    static const char* options[] = {"Scheduled Workout", "Free Workout", "Workout History"};
     lv_label_set_text(mTitle, "UNA Strength");
     lv_label_set_text(mBody, options[mLaunchIndex]);
     lv_label_set_text(mFooter, "L1/L2 choose  R1 start");
@@ -137,19 +187,48 @@ void MainScreen::onKey(uint8_t code)
     if (!click) return;
 
     if (mMode == LaunchMode::Menu) {
-        if (b == Button::Up || b == Button::Down) {
-            mLaunchIndex = 1 - mLaunchIndex;
+        if (b == Button::Up) {
+            mLaunchIndex = (mLaunchIndex + 2) % 3;
+            renderLaunchMenu();
+        } else if (b == Button::Down) {
+            mLaunchIndex = (mLaunchIndex + 1) % 3;
             renderLaunchMenu();
         } else if (b == Button::Select) {
             if (mLaunchIndex == 0) startScheduled();
-            else startFree();
+            else if (mLaunchIndex == 1) startFree();
+            else startHistory();
+        }
+        return;
+    }
+
+    if (mMode == LaunchMode::HistoryList) {
+        if (b == Button::Back) {
+            mMode = LaunchMode::Menu;
+            renderLaunchMenu();
+        } else if (!mHistory.empty() && b == Button::Up) {
+            mHistoryIndex = (mHistoryIndex + mHistory.size() - 1) % mHistory.size();
+            renderHistory();
+        } else if (!mHistory.empty() && b == Button::Down) {
+            mHistoryIndex = (mHistoryIndex + 1) % mHistory.size();
+            renderHistory();
+        } else if (!mHistory.empty() && b == Button::Select) {
+            mMode = LaunchMode::HistoryDetail;
+            renderHistory();
+        }
+        return;
+    }
+
+    if (mMode == LaunchMode::HistoryDetail) {
+        if (b == Button::Back) {
+            mMode = LaunchMode::HistoryList;
+            renderHistory();
         }
         return;
     }
 
     if (mMode == LaunchMode::Scheduled) {
         mController->press(b, nowMs());
-    } else {
+    } else if (mMode == LaunchMode::Free) {
         mFreeController->press(b, nowMs());
     }
     render();
@@ -160,6 +239,7 @@ void MainScreen::render()
     ViewModel v;
     if (mMode == LaunchMode::Scheduled) v = mController->view(nowMs());
     else if (mMode == LaunchMode::Free) v = mFreeController->view(nowMs());
+    else if (mMode == LaunchMode::HistoryList || mMode == LaunchMode::HistoryDetail) { renderHistory(); return; }
     else { renderLaunchMenu(); return; }
 
     std::string body;
@@ -183,14 +263,11 @@ void MainScreen::render()
     if (mResultSaved) return;
 
     const WorkoutResult* result = nullptr;
-    const char* resultPath = nullptr;
 
     if (mMode == LaunchMode::Scheduled && v.screen == Screen::Summary) {
         result = mController->result();
-        resultPath = "results/scheduled-today-result.json";
     } else if (mMode == LaunchMode::Free && mFreeController->screen() == FreeScreen::Summary) {
         result = mFreeController->result();
-        resultPath = "results/free-workout-result.json";
     } else {
         return;
     }
@@ -202,15 +279,18 @@ void MainScreen::render()
 
     auto& fs = SDK::KernelProviderGUI::GetInstance().getKernel().fs;
     fs.mkdir("results");
+    const std::string resultPath = "results/" + result->date + "-" +
+        std::to_string(result->started_at_unix_ms) + "-" +
+        (mMode == LaunchMode::Free ? "free.json" : "scheduled.json");
     std::string error;
-    if (!JsonIO::saveResult(fs, resultPath, *result, error)) {
+    if (!JsonIO::saveResult(fs, resultPath.c_str(), *result, error)) {
         LOG_ERROR("UNA_STRENGTH_JSON_EXPORT_FAIL error=%s\n", error.c_str());
         return;
     }
 
     mResultSaved = true;
     LOG_INFO("UNA_STRENGTH_JSON_EXPORT_PASS path=%s reps=%d volume=%.0f\n",
-             resultPath, result->total_reps, result->training_volume_lb);
+             resultPath.c_str(), result->total_reps, result->training_volume_lb);
 
     if (mMode == LaunchMode::Free) {
         if (result->workout_name == "Free Workout" &&

@@ -32,7 +32,7 @@ private:
     lv_obj_t* mBody = nullptr;
     lv_obj_t* mFooter = nullptr;
     std::unique_ptr<SDK::LVGL::Buttons> mButtons;
-    enum class LaunchMode { Menu, Scheduled, Free, HistoryList, HistoryDetail };
+    enum class LaunchMode { Menu, Scheduled, ScheduledError, Free, HistoryList, HistoryDetail };
     LaunchMode mMode = LaunchMode::Menu;
     int mLaunchIndex = 0;
     std::vector<una_strength::HistoryEntry> mHistory;

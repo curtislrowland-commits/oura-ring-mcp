@@ -8,7 +8,7 @@ on:
 jobs:
   simulator:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - name: Checkout test harness
         uses: actions/checkout@v4
@@ -270,6 +270,43 @@ jobs:
           grep -q "UNA_STRENGTH_JSON_IMPORT_FAIL error=no workout scheduled for 2026-10-03" missing.log
           mv /tmp/today-away.json "$OUT/workouts/today.json"
 
+      - name: Build real UNA .uapp package with ARM toolchain
+        shell: bash
+        run: |
+          set -euxo pipefail
+          SDK="$RUNNER_TEMP/una-sdk"
+          mkdir -p "$SDK/Docs/Tutorials/HelloWorld/Software/OutputRC1"
+          docker run --rm             -v "$SDK:/workspace/una-sdk"             -w /workspace/una-sdk             xanderhendriks/stm32cubeide:16.0             bash -lc '
+              set -euxo pipefail
+              apt-get -o Acquire::By-Hash=yes update
+              apt-get install -y git python3-full python3-pip python-is-python3 cmake
+              python3 -m pip install --break-system-packages -r Utilities/Scripts/app_packer/requirements.txt
+              export PATH=/tmp/bin:$(find /opt/st/stm32cubeide_* -type f -name arm-none-eabi-objcopy | head -n 1 | xargs dirname):$PATH
+              export PATH=/tmp/bin:$(find /opt/st/stm32cubeide_* -type f -name make | head -n 1 | xargs dirname):$PATH
+              chmod +x $(find /opt/st/stm32cubeide_* -type f -name make | head -n 1)
+              chmod +x $(find /opt/st/stm32cubeide_* -type f -name arm-none-eabi-gcc | head -n 1)
+              chmod +x $(find /opt/st/stm32cubeide_* -type f -name arm-none-eabi-g++ | head -n 1)
+              export UNA_SDK=/workspace/una-sdk
+              APPS=Docs/Tutorials/HelloWorld/Software/Apps
+              rm -rf "$APPS/UNAStrength-CMake"
+              cp -a "$APPS/HelloWorldLVGL-CMake" "$APPS/UNAStrength-CMake"
+              sed -i "s/set(APP_NAME \"HelloWorldLVGL\")/set(APP_NAME \"UNAStrength\")/" "$APPS/UNAStrength-CMake/CMakeLists.txt"
+              sed -i "s/set(APP_ID \"94D02A02E9B3EC2E\")/set(APP_ID \"554E415354524E47\")/" "$APPS/UNAStrength-CMake/CMakeLists.txt"
+              sed -i "s#OutputLVGL#OutputRC1#" "$APPS/UNAStrength-CMake/CMakeLists.txt"
+              sed -i "/una_app_build_gui/i set(GUI_RAM_LENGTH \"900K\")" "$APPS/UNAStrength-CMake/CMakeLists.txt"
+              cd "$APPS/UNAStrength-CMake"
+              mkdir -p build
+              cd build
+              cmake ..
+              make -j$(nproc)
+              UAPP=$(find . -maxdepth 1 -name "*.uapp" -type f | head -n 1)
+              test -n "$UAPP"
+              test -s "$UAPP"
+              cp "$UAPP" /workspace/una-sdk/Docs/Tutorials/HelloWorld/Software/OutputRC1/UNAStrength-RC1.uapp
+            '
+          test -s "$SDK/Docs/Tutorials/HelloWorld/Software/OutputRC1/UNAStrength-RC1.uapp"
+          ls -lh "$SDK/Docs/Tutorials/HelloWorld/Software/OutputRC1/UNAStrength-RC1.uapp"
+
       - name: RC1 decision summary
         shell: bash
         run: |
@@ -285,6 +322,7 @@ jobs:
           heart_rate_simulator=PASS
           rep_count_synthetic_profiles=PASS
           motion_adapter_sdk_compile=PASS
+          real_uapp_package=PASS
           duplicate_workout_safe_failure=PASS
           corrupt_workout_safe_failure=PASS
           missing_workout_safe_failure=PASS

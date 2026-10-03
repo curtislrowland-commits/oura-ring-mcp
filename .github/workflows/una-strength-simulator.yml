@@ -69,6 +69,7 @@ jobs:
           CXXFLAGS="-std=c++17 -Wall -Wextra -Wpedantic -Werror -fno-exceptions -I$INC"
           g++ $CXXFLAGS "$SRC/session.cpp" "$SRC/controller.cpp" "$SRC/heart_rate.cpp" una-strength/tests/rc1_session_test.cpp -o /tmp/rc1_session_test
           g++ $CXXFLAGS "$SRC/session.cpp" "$SRC/controller.cpp" "$SRC/heart_rate.cpp" una-strength/tests/rc1_controller_hr_test.cpp -o /tmp/rc1_controller_hr_test
+          g++ $CXXFLAGS "$SRC/free_workout.cpp" "$SRC/free_controller.cpp" "$SRC/controller.cpp" "$SRC/session.cpp" "$SRC/heart_rate.cpp" -c
           g++ $CXXFLAGS "$SRC/session.cpp" "$SRC/rep_counter.cpp" una-strength/tests/rc1_rep_counter_test.cpp -o /tmp/rc1_rep_counter_test
           printf '#include "una_strength/una_motion_adapter.hpp"\nint main(){return 0;}\n' | g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I"$INC" -I"$SDK/Libs/Header" -x c++ - -c -o /tmp/una_motion_adapter.o
           /tmp/rc1_session_test
@@ -305,7 +306,7 @@ jobs:
               cp "$UAPP" /workspace/una-sdk/Docs/Tutorials/HelloWorld/OutputRC1/UNAStrength-RC1.uapp
             '
           test -s "$SDK/Docs/Tutorials/HelloWorld/OutputRC1/UNAStrength-RC1.uapp"
-          ls -lh "$SDK/Docs/Tutorials/HelloWorld/Software/OutputRC1/UNAStrength-RC1.uapp"
+          ls -lh "$SDK/Docs/Tutorials/HelloWorld/OutputRC1/UNAStrength-RC1.uapp"
 
       - name: RC1 decision summary
         shell: bash

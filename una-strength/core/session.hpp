@@ -21,6 +21,10 @@ public:
     void skip_current_set(std::uint64_t now_ms);
     void substitute_current_exercise(const std::string& new_id,const std::string& new_name);
     void skip_current_exercise(std::uint64_t now_ms);
+    bool add_set_current();
+    bool remove_current_set();
+    bool add_exercise(const std::string& id,const std::string& name,double weight,int reps);
+    bool move_current_exercise_later();
     std::uint64_t elapsed_rest_ms(std::uint64_t now_ms) const;
     void end_rest(std::uint64_t now_ms);
     WorkoutResult finish(std::uint64_t end_ms, const SubjectiveAssessment& assessment);

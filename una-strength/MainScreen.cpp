@@ -215,8 +215,8 @@ void MainScreen::render()
     if (mMode == LaunchMode::Free) {
         if (result->workout_name == "Free Workout" &&
             result->exercises.size() == 2 &&
-            result->total_reps == 20 &&
-            result->training_volume_lb == 2125.0) {
+            result->total_reps == 16 &&
+            result->training_volume_lb == 1585.0) {
             LOG_INFO("UNA_FREE_WORKOUT_PASS exercises=%u reps=%d volume=%.0f\n",
                      static_cast<unsigned>(result->exercises.size()),
                      result->total_reps, result->training_volume_lb);

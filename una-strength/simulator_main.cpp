@@ -40,6 +40,17 @@ static void scheduledFlow()
     for(int i=0;i<6;++i) tap(SDLK_3); // assessment
 }
 
+static void historyFlow()
+{
+    tap(SDLK_2); // Free Workout
+    tap(SDLK_2); // Workout History
+    tap(SDLK_3); // open History
+    tap(SDLK_3); // open newest entry detail
+    tap(SDLK_4); // back to list
+    tap(SDLK_2); // older entry
+    tap(SDLK_3); // open older detail
+}
+
 static void freeFlow()
 {
     tap(SDLK_2); // launch menu -> Free Workout
@@ -117,6 +128,7 @@ int main(int,char**)
     std::thread injector([mode]{
         std::this_thread::sleep_for(std::chrono::milliseconds(600));
         if(mode && std::strcmp(mode,"free")==0) freeFlow();
+        else if(mode && std::strcmp(mode,"history")==0) historyFlow();
         else scheduledFlow();
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
         SDL_Event q{}; q.type=SDL_QUIT; SDL_PushEvent(&q);

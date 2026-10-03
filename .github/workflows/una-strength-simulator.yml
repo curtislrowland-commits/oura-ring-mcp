@@ -22,7 +22,14 @@ jobs:
           GUI="$SDK/Docs/Tutorials/HelloWorld/Software/Apps/LVGL-GUI"
           cp una-strength/MainScreen.hpp "$GUI/gui/include/gui/screens/MainScreen.hpp"
           cp una-strength/MainScreen.cpp "$GUI/gui/src/screens/MainScreen.cpp"
+          cp una-strength/Model.hpp "$GUI/gui/include/gui/model/Model.hpp"
+          cp una-strength/ModelListener.hpp "$GUI/gui/include/gui/model/ModelListener.hpp"
+          cp una-strength/Model.cpp "$GUI/gui/src/model/Model.cpp"
           cp una-strength/simulator_main.cpp "$GUI/simulator/main.cpp"
+          LIBS="$SDK/Docs/Tutorials/HelloWorld/Software/Libs"
+          cp una-strength/Commands.hpp "$LIBS/Header/Commands.hpp"
+          cp una-strength/Service.hpp "$LIBS/Header/Service.hpp"
+          cp una-strength/Service.cpp "$LIBS/Sources/Service.cpp"
           mkdir -p "$GUI/gui/include/una_strength" "$GUI/gui/src/una_strength"
           cp una-strength/core/model.hpp "$GUI/gui/include/una_strength/model.hpp"
           cp una-strength/core/session.hpp "$GUI/gui/include/una_strength/session.hpp"
@@ -32,6 +39,8 @@ jobs:
           cp una-strength/core/free_workout.hpp "$GUI/gui/include/una_strength/free_workout.hpp"
           cp una-strength/core/free_controller.hpp "$GUI/gui/include/una_strength/free_controller.hpp"
           cp una-strength/core/history.hpp "$GUI/gui/include/una_strength/history.hpp"
+          cp una-strength/core/heart_rate.hpp "$GUI/gui/include/una_strength/heart_rate.hpp"
+          cp una-strength/core/una_hr_adapter.hpp "$GUI/gui/include/una_strength/una_hr_adapter.hpp"
           cp una-strength/core/session.cpp "$GUI/gui/src/una_strength/session.cpp"
           cp una-strength/core/controller.cpp "$GUI/gui/src/una_strength/controller.cpp"
           cp una-strength/core/json_io.cpp "$GUI/gui/src/una_strength/json_io.cpp"
@@ -39,6 +48,7 @@ jobs:
           cp una-strength/core/free_workout.cpp "$GUI/gui/src/una_strength/free_workout.cpp"
           cp una-strength/core/free_controller.cpp "$GUI/gui/src/una_strength/free_controller.cpp"
           cp una-strength/core/history.cpp "$GUI/gui/src/una_strength/history.cpp"
+          cp una-strength/core/heart_rate.cpp "$GUI/gui/src/una_strength/heart_rate.cpp"
           mkdir -p "$SDK/Docs/Tutorials/HelloWorld/Software/Output/workouts"
           cp una-strength/workout_yesterday.json "$SDK/Docs/Tutorials/HelloWorld/Software/Output/workouts/yesterday.json"
           cp una-strength/workout_today.json "$SDK/Docs/Tutorials/HelloWorld/Software/Output/workouts/today.json"
@@ -73,6 +83,14 @@ jobs:
           assert d["workout_id"] == "scheduled-today-pass"
           assert d["total_reps"] == 10
           assert d["training_volume_lb"] == 550
+          hr=d["heart_rate"]
+          assert hr["available"] is True
+          assert hr["sample_count"] >= 1
+          assert 120 <= hr["min_bpm"] <= 180
+          assert 120 <= hr["avg_bpm"] <= 180
+          assert 120 <= hr["max_bpm"] <= 180
+          assert len(hr["samples"]) == hr["sample_count"]
+          print("SCHEDULED_HR_ASSERTIONS_PASS", hr["sample_count"], hr["avg_bpm"], hr["max_bpm"])
           print("SCHEDULED_JSON_ASSERTIONS_PASS")
           PY
       - name: Run free workout simulator test
@@ -120,6 +138,14 @@ jobs:
           assert a["session_rpe"] == 5
           assert a["pain"] == 0
           assert a["expectation"] == "as_expected"
+          hr=d["heart_rate"]
+          assert hr["available"] is True
+          assert hr["sample_count"] >= 1
+          assert 120 <= hr["min_bpm"] <= 180
+          assert 120 <= hr["avg_bpm"] <= 180
+          assert 120 <= hr["max_bpm"] <= 180
+          assert len(hr["samples"]) == hr["sample_count"]
+          print("FREE_HR_ASSERTIONS_PASS", hr["sample_count"], hr["avg_bpm"], hr["max_bpm"])
           print("FREE_JSON_ASSERTIONS_PASS")
           PY
       - name: Run workout history simulator test
@@ -133,6 +159,10 @@ jobs:
           grep -q "UNA_HISTORY_LOAD_PASS count=2" history.log
           grep -q "UNA_HISTORY_DETAIL_PASS name=Free Workout reps=16 volume=1585 rpe=5" history.log
           grep -q "UNA_HISTORY_DETAIL_PASS name=Today Auto Selected Workout reps=10 volume=550 rpe=5" history.log
+          grep -q "UNA_HR_SENSOR_CONNECT PASS" scheduled.log
+          grep -q "UNA_HR_SENSOR_SAMPLE" scheduled.log
+          grep -q "UNA_HR_SUMMARY_PASS" scheduled.log
+          grep -q "UNA_HR_SUMMARY_PASS" free.log
           python3 - "$UNA_SDK/Docs/Tutorials/HelloWorld/Software/Output/results" <<'PY'
           import glob, json, os, sys
           root=sys.argv[1]
@@ -142,6 +172,8 @@ jobs:
           for p in files:
               with open(p,encoding="utf-8") as f:
                   d=json.load(f)
+              assert d["heart_rate"]["available"] is True
+              assert d["heart_rate"]["sample_count"] >= 1
               rows.append((d["ended_at_unix_ms"], d["workout_name"], d["total_reps"], d["training_volume_lb"]))
           rows.sort(reverse=True)
           assert {r[1] for r in rows} == {"Free Workout","Today Auto Selected Workout"}

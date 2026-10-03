@@ -23,35 +23,6 @@ std::uint64_t MainScreen::nowMs()
 MainScreen::MainScreen(Model& model)
     : mModel(model)
 {
-    auto& fs = SDK::KernelProviderGUI::GetInstance().getKernel().fs;
-    std::string error;
-    const std::string today = WorkoutRepository::localDate();
-    std::string selectedPath;
-    mWorkoutLoaded = WorkoutRepository::loadScheduledForDate(
-        fs, "workouts", today, mPlan, selectedPath, error);
-
-    if (!mWorkoutLoaded) {
-        LOG_ERROR("UNA_STRENGTH_JSON_IMPORT_FAIL error=%s\n", error.c_str());
-        // Keep the simulator alive with a visibly invalid fallback. The CI test
-        // requires the import-success marker, so this cannot create a false pass.
-        mPlan.workout_id = "IMPORT_FAILED";
-        mPlan.name = "Workout load failed";
-        mPlan.scheduled_date = "1970-01-01";
-        ExercisePlan ex;
-        ex.id = "error";
-        ex.name = "Import error";
-        ex.sets.push_back({1, 0.0});
-        mPlan.exercises.push_back(ex);
-    } else {
-        LOG_INFO("UNA_STRENGTH_DATE_SELECT_PASS date=%s path=%s id=%s\n",
-                 today.c_str(), selectedPath.c_str(), mPlan.workout_id.c_str());
-        LOG_INFO("UNA_STRENGTH_JSON_IMPORT_PASS id=%s name=%s exercises=%u\n",
-                 mPlan.workout_id.c_str(), mPlan.name.c_str(),
-                 static_cast<unsigned>(mPlan.exercises.size()));
-    }
-
-    mController = std::make_unique<WorkoutController>(mPlan, nowMs());
-
     mRoot = lv_obj_create(nullptr);
     Draw::applyScreen(mRoot);
     lv_obj_add_event_cb(mRoot, &MainScreen::keyEventCb, LV_EVENT_KEY, this);
@@ -83,7 +54,7 @@ MainScreen::MainScreen(Model& model)
 
     bind(&mModel);
     mModel.bind(this);
-    render();
+    renderLaunchMenu();
     LOG_INFO("UNA_STRENGTH_SCREEN_READY\n");
 }
 
@@ -91,6 +62,58 @@ MainScreen::~MainScreen()
 {
     mModel.bind(nullptr);
     lv_obj_delete(mRoot);
+}
+
+void MainScreen::startScheduled()
+{
+    auto& fs = SDK::KernelProviderGUI::GetInstance().getKernel().fs;
+    std::string error;
+    const std::string today = WorkoutRepository::localDate();
+    std::string selectedPath;
+    mWorkoutLoaded = WorkoutRepository::loadScheduledForDate(
+        fs, "workouts", today, mPlan, selectedPath, error);
+
+    if (!mWorkoutLoaded) {
+        LOG_ERROR("UNA_STRENGTH_JSON_IMPORT_FAIL error=%s\n", error.c_str());
+        mPlan.workout_id = "IMPORT_FAILED";
+        mPlan.name = "Workout load failed";
+        mPlan.scheduled_date = "1970-01-01";
+        ExercisePlan ex;
+        ex.id = "error";
+        ex.name = "Import error";
+        ex.sets.push_back({1, 0.0});
+        mPlan.exercises.push_back(ex);
+    } else {
+        LOG_INFO("UNA_STRENGTH_DATE_SELECT_PASS date=%s path=%s id=%s\n",
+                 today.c_str(), selectedPath.c_str(), mPlan.workout_id.c_str());
+        LOG_INFO("UNA_STRENGTH_JSON_IMPORT_PASS id=%s name=%s exercises=%u\n",
+                 mPlan.workout_id.c_str(), mPlan.name.c_str(),
+                 static_cast<unsigned>(mPlan.exercises.size()));
+    }
+
+    mController = std::make_unique<WorkoutController>(mPlan, nowMs());
+    mMode = LaunchMode::Scheduled;
+    mResultSaved = false;
+    render();
+}
+
+void MainScreen::startFree()
+{
+    const std::string today = WorkoutRepository::localDate();
+    mFreeController = std::make_unique<FreeWorkoutController>(today, nowMs());
+    mMode = LaunchMode::Free;
+    mResultSaved = false;
+    LOG_INFO("UNA_FREE_WORKOUT_START date=%s\n", today.c_str());
+    render();
+}
+
+void MainScreen::renderLaunchMenu()
+{
+    static const char* options[] = {"Scheduled Workout", "Free Workout"};
+    lv_label_set_text(mTitle, "UNA Strength");
+    lv_label_set_text(mBody, options[mLaunchIndex]);
+    lv_label_set_text(mFooter, "L1/L2 choose  R1 start");
+    LOG_INFO("UNA_LAUNCH_MENU option=%s\n", options[mLaunchIndex]);
 }
 
 void MainScreen::keyEventCb(lv_event_t* e)
@@ -113,13 +136,32 @@ void MainScreen::onKey(uint8_t code)
     }
     if (!click) return;
 
-    mController->press(b, nowMs());
+    if (mMode == LaunchMode::Menu) {
+        if (b == Button::Up || b == Button::Down) {
+            mLaunchIndex = 1 - mLaunchIndex;
+            renderLaunchMenu();
+        } else if (b == Button::Select) {
+            if (mLaunchIndex == 0) startScheduled();
+            else startFree();
+        }
+        return;
+    }
+
+    if (mMode == LaunchMode::Scheduled) {
+        mController->press(b, nowMs());
+    } else {
+        mFreeController->press(b, nowMs());
+    }
     render();
 }
 
 void MainScreen::render()
 {
-    auto v = mController->view(nowMs());
+    ViewModel v;
+    if (mMode == LaunchMode::Scheduled) v = mController->view(nowMs());
+    else if (mMode == LaunchMode::Free) v = mFreeController->view(nowMs());
+    else { renderLaunchMenu(); return; }
+
     std::string body;
     for (std::size_t i = 0; i < v.lines.size(); ++i) {
         if (i) body += "\n";
@@ -131,36 +173,64 @@ void MainScreen::render()
     lv_label_set_text(mFooter, v.footer.c_str());
     LOG_INFO("UNA_VIEW title=%s body=%s\n", v.title.c_str(), body.c_str());
 
-    if (v.screen == Screen::Rest) {
+    if (mMode == LaunchMode::Scheduled && v.screen == Screen::Rest) {
         LOG_INFO("UNA_STRENGTH_REST_REACHED\n");
     }
+    if (mMode == LaunchMode::Free && mFreeController->screen() == FreeScreen::Rest) {
+        LOG_INFO("UNA_FREE_REST_REACHED\n");
+    }
 
-    if (v.screen == Screen::Summary && !mResultSaved) {
-        const auto* result = mController->result();
-        if (!result) {
-            LOG_ERROR("UNA_STRENGTH_JSON_EXPORT_FAIL error=no result\n");
-            return;
-        }
+    if (mResultSaved) return;
 
-        auto& fs = SDK::KernelProviderGUI::GetInstance().getKernel().fs;
-        fs.mkdir("results");
+    const WorkoutResult* result = nullptr;
+    const char* resultPath = nullptr;
 
-        std::string error;
-        const char* resultPath = "results/scheduled-today-result.json";
-        if (JsonIO::saveResult(fs, resultPath, *result, error)) {
-            mResultSaved = true;
-            LOG_INFO("UNA_STRENGTH_JSON_EXPORT_PASS path=%s reps=%d volume=%.0f\n",
-                     resultPath, result->total_reps, result->training_volume_lb);
-            if (mWorkoutLoaded &&
-                result->workout_id == "scheduled-today-pass" &&
-                result->total_reps == 10 &&
-                result->training_volume_lb == 550.0) {
-                LOG_INFO("UNA_STRENGTH_ROUNDTRIP_PASS\n");
-            } else {
-                LOG_ERROR("UNA_STRENGTH_ROUNDTRIP_FAIL\n");
-            }
+    if (mMode == LaunchMode::Scheduled && v.screen == Screen::Summary) {
+        result = mController->result();
+        resultPath = "results/scheduled-today-result.json";
+    } else if (mMode == LaunchMode::Free && mFreeController->screen() == FreeScreen::Summary) {
+        result = mFreeController->result();
+        resultPath = "results/free-workout-result.json";
+    } else {
+        return;
+    }
+
+    if (!result) {
+        LOG_ERROR("UNA_STRENGTH_JSON_EXPORT_FAIL error=no result\n");
+        return;
+    }
+
+    auto& fs = SDK::KernelProviderGUI::GetInstance().getKernel().fs;
+    fs.mkdir("results");
+    std::string error;
+    if (!JsonIO::saveResult(fs, resultPath, *result, error)) {
+        LOG_ERROR("UNA_STRENGTH_JSON_EXPORT_FAIL error=%s\n", error.c_str());
+        return;
+    }
+
+    mResultSaved = true;
+    LOG_INFO("UNA_STRENGTH_JSON_EXPORT_PASS path=%s reps=%d volume=%.0f\n",
+             resultPath, result->total_reps, result->training_volume_lb);
+
+    if (mMode == LaunchMode::Free) {
+        if (result->workout_name == "Free Workout" &&
+            result->exercises.size() == 2 &&
+            result->total_reps == 20 &&
+            result->training_volume_lb == 2125.0) {
+            LOG_INFO("UNA_FREE_WORKOUT_PASS exercises=%u reps=%d volume=%.0f\n",
+                     static_cast<unsigned>(result->exercises.size()),
+                     result->total_reps, result->training_volume_lb);
         } else {
-            LOG_ERROR("UNA_STRENGTH_JSON_EXPORT_FAIL error=%s\n", error.c_str());
+            LOG_ERROR("UNA_FREE_WORKOUT_FAIL exercises=%u reps=%d volume=%.0f\n",
+                      static_cast<unsigned>(result->exercises.size()),
+                      result->total_reps, result->training_volume_lb);
         }
+    } else if (mWorkoutLoaded &&
+               result->workout_id == "scheduled-today-pass" &&
+               result->total_reps == 10 &&
+               result->training_volume_lb == 550.0) {
+        LOG_INFO("UNA_STRENGTH_ROUNDTRIP_PASS\n");
+    } else {
+        LOG_ERROR("UNA_STRENGTH_ROUNDTRIP_FAIL\n");
     }
 }

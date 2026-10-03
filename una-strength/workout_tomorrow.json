@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "workout_id": "wrong-tomorrow",
+  "name": "Tomorrow Workout",
+  "scheduled_date": "2026-10-04",
+  "exercises": [{"id":"ohp","name":"Shoulder Press","sets":[{"target_reps":88,"target_weight_lb":888}]}]
+}

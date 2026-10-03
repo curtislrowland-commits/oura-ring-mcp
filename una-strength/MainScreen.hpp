@@ -7,6 +7,7 @@
 #include "gui/model/Model.hpp"
 #include "gui/model/ModelListener.hpp"
 #include "una_strength/controller.hpp"
+#include "una_strength/json_io.hpp"
 class MainScreen : public ModelListener {
 public:
     explicit MainScreen(Model& model);
@@ -27,5 +28,7 @@ private:
     std::unique_ptr<SDK::LVGL::Buttons> mButtons;
     una_strength::WorkoutPlan mPlan;
     std::unique_ptr<una_strength::WorkoutController> mController;
+    bool mResultSaved = false;
+    bool mWorkoutLoaded = false;
 };
 #endif
